@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 import sys
-import time
 import requests
 from bs4 import BeautifulSoup
 
@@ -29,7 +28,6 @@ class ExchangeRate:
         for base in self._base_currency:
             for transaction in self._transaction_currency:
                 print(self._query_exchange_rate(base, transaction, self._rate_date))
-                time.sleep(3)
 
     def _query_exchange_rate(self, base_currency, transaction_currency, query_date):
         payload = {
