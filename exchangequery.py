@@ -4,45 +4,49 @@ import requests
 from bs4 import BeautifulSoup
 
 
-TIME_OUT = 3
+TIME_OUT = 5
 
 class ExchangeRate:
 
     def __init__(self, host, rate_date=None):
         self._rate_date = rate_date if rate_date else datetime.now().strftime('%Y-%m-%d')
+        self._exchange_rate = []
         self._headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36'
         }
-        self._web_url = host + 'cardholderServ/serviceCenter/rate?language=cn'
-        self._s = requests.Session()
-        r = self._s.get(self._web_url, headers=self._headers, timeout=TIME_OUT)
+        self._web_url = host + '/cardholderServ/serviceCenter/rate?language=cn'
+        r = requests.get(self._web_url, headers=self._headers, timeout=TIME_OUT)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'lxml')
-        base_currency_list = soup.find_all(id='baseCurrency')
-        self._base_currency = tuple(sorted([base['val'] for base in base_currency_list if base['val'] != '扣账币种']))
-        trans_currency_list = soup.find_all(id='transactionCurrency')
-        self._transaction_currency = tuple(sorted([trans['val'] for trans in trans_currency_list if trans['val'] != '交易币种']))
+        base_list = [(base['val'], base.string) for base in soup.find_all(id='baseCurrency') if base['val'] != '扣账币种']
+        self._base_currency = sorted(base_list, key=lambda x: x[0])
+        print(self._base_currency)
+        trans_list = [(trans['val'], trans.string) for trans in soup.find_all(id='transactionCurrency') if trans['val'] != '交易币种']
+        self._transaction_currency = sorted(trans_list, key=lambda y: y[0])
+        print(self._transaction_currency)
         self._search_url = host + soup.find(id='rateForm')['action']
 
     def get_exchange_rates(self):
-        for base in self._base_currency:
-            for transaction in self._transaction_currency:
-                print(self._query_exchange_rate(base, transaction, self._rate_date))
-
-    def _query_exchange_rate(self, base_currency, transaction_currency, query_date):
-        payload = {
-            'curDate': query_date,
-            'baseCurrency': base_currency,
-            'transactionCurrency': transaction_currency
-        }
-        if base_currency == transaction_currency:
-            return base_currency, transaction_currency, query_date, 1
-        r = self._s.post(self._search_url, data=payload, timeout=TIME_OUT)
-        r.raise_for_status()
-        rate_json = r.json()
-        exchange_rate = rate_json.get('exchangeRate')
-        update_date = datetime.fromtimestamp(int(rate_json.get('updateDate')) / 1000).strftime('%Y-%m-%d')
-        return base_currency, transaction_currency, update_date, exchange_rate
+        for transaction in self._transaction_currency:
+            base_list = []
+            s = requests.Session()
+            for base in self._base_currency:
+                if base[0] == transaction[0]:
+                    base_list.append((base[0], self._rate_date, 1))
+                else:
+                    payload = {
+                     'curDate': self._rate_date,
+                     'baseCurrency': base[0],
+                     'transactionCurrency': transaction[0]
+                    }
+                    r = s.post(self._search_url, data=payload, timeout=TIME_OUT)
+                    r.raise_for_status()
+                    rate_json = r.json()
+                    exchange_rate = rate_json.get('exchangeRate')
+                    update_date = datetime.fromtimestamp(int(rate_json.get('updateDate')) / 1000).strftime('%Y-%m-%d')
+                    base_list.append((base[0], update_date, exchange_rate))
+            self._exchange_rate.append({transaction[0]: base_list})
+        return self._exchange_rate
 
     @property
     def base_currency(self):
@@ -52,11 +56,13 @@ class ExchangeRate:
     def transaction_currency(self):
         return self._transaction_currency
 
+    @property
+    def rate_date(self):
+        return self._rate_date
+
 
 def main():
-    rate = ExchangeRate(sys.argv[1], rate_date=(datetime.now().strftime('%Y-%m-%d')))
-    print(rate.base_currency)
-    print(rate.transaction_currency)
+    rate = ExchangeRate(sys.argv[1])
     print(rate.get_exchange_rates())
 
 
