@@ -10,7 +10,7 @@ class ExchangeRate:
 
     def __init__(self, host, rate_date=None):
         self._rate_date = rate_date if rate_date else datetime.now().strftime('%Y-%m-%d')
-        self._exchange_rate = []
+        self._exchange_rate = {}
         self._headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36'
         }
@@ -19,33 +19,34 @@ class ExchangeRate:
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'lxml')
         base_list = [(base['val'], base.string) for base in soup.find_all(id='baseCurrency') if base['val'] != '扣账币种']
-        self._base_currency = sorted(base_list, key=lambda x: x[0])
+        self._base_currency = dict(sorted(base_list, key=lambda x: x[0]))
         print(self._base_currency)
         trans_list = [(trans['val'], trans.string) for trans in soup.find_all(id='transactionCurrency') if trans['val'] != '交易币种']
-        self._transaction_currency = sorted(trans_list, key=lambda y: y[0])
+        self._transaction_currency = dict(sorted(trans_list, key=lambda y: y[0]))
         print(self._transaction_currency)
         self._search_url = host + soup.find(id='rateForm')['action']
 
     def get_exchange_rates(self):
-        for transaction in self._transaction_currency:
-            base_list = []
+        for t_k, t_v in self._transaction_currency.items():
+            base_dict = {}
             s = requests.Session()
-            for base in self._base_currency:
-                if base[0] == transaction[0]:
-                    base_list.append((base[0], self._rate_date, 1))
+            for b_k, b_v in self._base_currency.items():
+                if b_k == t_k:
+                    base_dict[b_k] = (t_v, t_k, b_k, b_v, self._rate_date, 1)
                 else:
                     payload = {
                      'curDate': self._rate_date,
-                     'baseCurrency': base[0],
-                     'transactionCurrency': transaction[0]
+                     'baseCurrency': b_k,
+                     'transactionCurrency': t_k
                     }
                     r = s.post(self._search_url, data=payload, timeout=TIME_OUT)
                     r.raise_for_status()
                     rate_json = r.json()
-                    exchange_rate = rate_json.get('exchangeRate')
+                    rate = rate_json.get('exchangeRate')
                     update_date = datetime.fromtimestamp(int(rate_json.get('updateDate')) / 1000).strftime('%Y-%m-%d')
-                    base_list.append((base[0], update_date, exchange_rate))
-            self._exchange_rate.append({transaction[0]: base_list})
+                    base_dict[b_k] = (t_k, t_v, b_k, b_v, update_date, rate)
+            self._exchange_rate = {t_k: base_list}
+            print(self._exchange_rate)
         return self._exchange_rate
 
     @property
