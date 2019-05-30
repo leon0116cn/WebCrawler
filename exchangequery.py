@@ -19,7 +19,7 @@ class ExchangeRate:
         self._transaction_currency = (trans['val'] for trans in trans_currency_list if trans['val'] != '交易币种')
         self._search_url = 'http://www.unionpayintl.com' + soup.find(id='rateForm')['action']
 
-    def get_exchange_rates(self, base_currency, transaction_currency, query_date):
+    def query_exchange_rate(self, base_currency, transaction_currency, query_date):
         payload = {
             'curDate': query_date,
             'baseCurrency': base_currency,
@@ -43,9 +43,9 @@ class ExchangeRate:
 
 def main():
      rate = ExchangeRate()
-     print(rate.get_exchange_rates('CNY', 'USD', (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')))
-     print(rate.get_exchange_rates('CNY', 'USD', (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')))
-     print(rate.get_exchange_rates('CNY', 'USD', (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')))
+     print(rate.query_exchange_rate('CNY', 'USD', (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')))
+     print(rate.query_exchange_rate('CNY', 'USD', (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')))
+     print(rate.query_exchange_rate('CNY', 'USD', (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')))
 
 
 if __name__ == '__main__':
