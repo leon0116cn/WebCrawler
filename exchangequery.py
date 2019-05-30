@@ -63,6 +63,8 @@ class ExchangeRate:
 
 def main():
     rate = ExchangeRate(sys.argv[1])
+    print(rate.transaction_currency)
+    print(rate.base_currency)
     print(rate.get_exchange_rates())
 
 
