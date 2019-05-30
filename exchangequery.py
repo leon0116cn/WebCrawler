@@ -15,9 +15,9 @@ class ExchangeRate:
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'lxml')
         base_currency_list = soup.find_all(id='baseCurrency')
-        self._base_currency = (base['val'] for base in base_currency_list if base['val'] != '扣账币种')
+        self._base_currency = [base['val'] for base in base_currency_list if base['val'] != '扣账币种']
         trans_currency_list = soup.find_all(id='transactionCurrency')
-        self._transaction_currency = (trans['val'] for trans in trans_currency_list if trans['val'] != '交易币种')
+        self._transaction_currency = [trans['val'] for trans in trans_currency_list if trans['val'] != '交易币种']
         self._search_url = host + soup.find(id='rateForm')['action']
 
     def query_exchange_rate(self, base_currency, transaction_currency, query_date):
@@ -45,6 +45,8 @@ class ExchangeRate:
 def main():
     rate = ExchangeRate(sys.argv[1])
 #    print(rate.query_exchange_rate('CNY', 'USD', datetime.now().strftime('%Y-%m-%d')))
+    print(rate.base_currency)
+    print(rate.transaction_currency)
     print(rate.query_exchange_rate('CNY', 'USD', (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')))
     print(rate.query_exchange_rate('CNY', 'USD', (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')))
 
