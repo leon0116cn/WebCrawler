@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 import sys
 import requests
 from bs4 import BeautifulSoup
