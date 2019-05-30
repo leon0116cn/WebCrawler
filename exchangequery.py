@@ -6,11 +6,12 @@ from bs4 import BeautifulSoup
 
 TIME_OUT = 5
 
+
 class ExchangeRate:
 
     def __init__(self, host, rate_date=None):
         self._rate_date = rate_date if rate_date else datetime.now().strftime('%Y-%m-%d')
-        self._exchange_rate = {}
+        self._exchange_rates = {}
         self._headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36'
         }
@@ -18,16 +19,14 @@ class ExchangeRate:
         r = requests.get(self._web_url, headers=self._headers, timeout=TIME_OUT)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'lxml')
-        base_list = [(base['val'], base.string) for base in soup.find_all(id='baseCurrency') if base['val'] != '扣账币种']
-        self._base_currency = dict(sorted(base_list, key=lambda x: x[0]))
-        print(self._base_currency)
-        trans_list = [(trans['val'], trans.string) for trans in soup.find_all(id='transactionCurrency') if trans['val'] != '交易币种']
-        self._transaction_currency = dict(sorted(trans_list, key=lambda y: y[0]))
-        print(self._transaction_currency)
+        a_b = [(b['val'], b.string) for b in soup.find_all(id='baseCurrency') if b['val'] != '扣账币种']
+        self._base_currency = dict(sorted(a_b, key=lambda x: x[0]))
+        a_t = [(t['val'], t.string) for t in soup.find_all(id='transactionCurrency') if t['val'] != '交易币种']
+        self._trans_currency = dict(sorted(a_t, key=lambda y: y[0]))
         self._search_url = host + soup.find(id='rateForm')['action']
 
     def get_exchange_rates(self):
-        for t_k, t_v in self._transaction_currency.items():
+        for t_k, t_v in self._trans_currency.items():
             base_dict = {}
             s = requests.Session()
             for b_k, b_v in self._base_currency.items():
@@ -43,11 +42,11 @@ class ExchangeRate:
                     r.raise_for_status()
                     rate_json = r.json()
                     rate = rate_json.get('exchangeRate')
-                    update_date = datetime.fromtimestamp(int(rate_json.get('updateDate')) / 1000).strftime('%Y-%m-%d')
+                    update_date = datetime.fromtimestamp(int(rate_json.get('updateDate'))/1000).strftime('%Y-%m-%d')
                     base_dict[b_k] = (t_k, t_v, b_k, b_v, update_date, rate)
-            self._exchange_rate = {t_k: base_list}
-            print(self._exchange_rate)
-        return self._exchange_rate
+            self._exchange_rates = {t_k: base_dict}
+            print(self._exchange_rates)
+        return self._exchange_rates
 
     @property
     def base_currency(self):
@@ -55,7 +54,7 @@ class ExchangeRate:
 
     @property
     def transaction_currency(self):
-        return self._transaction_currency
+        return self._trans_currency
 
     @property
     def rate_date(self):
